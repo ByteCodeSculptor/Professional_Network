@@ -1,0 +1,75 @@
+@startuml
+!define RECTANGLE class
+
+package "Client Layer" {
+    [Web Browser] as Browser
+    [React SPA] as React
+}
+
+package "API Gateway Layer" {
+    [Express API Server] as API
+    [WebSocket Server] as WS
+}
+
+package "Application Layer" {
+    [Auth Service] as Auth
+    [User Service] as User
+    [Project Service] as Project
+    [Application Service] as Application
+    [Message Service] as Message
+    [Transaction Service] as Transaction
+    [Search Service] as Search
+    [Notification Service] as Notification
+}
+
+package "Data Layer" {
+    database "PostgreSQL" as DB {
+        [Users]
+        [Projects]
+        [Applications]
+        [Messages]
+        [Transactions]
+    }
+    [Redis Cache] as Cache
+    [S3 Storage] as S3
+}
+
+package "External Services" {
+    [Stripe API] as Stripe
+    [Email Service] as Email
+}
+
+Browser --> React
+React --> API : HTTPS/REST
+React --> WS : WebSocket
+React --> Stripe : Client-side Tokenization
+
+API --> Auth
+API --> User
+API --> Project
+API --> Application
+API --> Message
+API --> Transaction
+API --> Search
+API --> Notification
+
+WS --> Message
+
+Auth --> DB
+User --> DB
+Project --> DB
+Application --> DB
+Message --> DB
+Transaction --> DB
+Search --> DB
+
+User --> S3 : Profile Images
+Project --> S3 : Attachments
+
+Auth --> Cache : Session Data
+Search --> Cache : Search Results
+
+Transaction --> Stripe : Payment Processing
+Notification --> Email : Email Notifications
+
+@enduml

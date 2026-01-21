@@ -1,0 +1,302 @@
+@startuml
+
+interface IAuthService {
+  +register(data: RegisterDTO): Promise<AuthResponse>
+  +login(credentials: LoginDTO): Promise<AuthResponse>
+  +logout(token: string): Promise<void>
+  +verifyToken(token: string): Promise<JWTPayload>
+  +refreshToken(refreshToken: string): Promise<AuthResponse>
+}
+
+interface IUserService {
+  +getUserById(id: string): Promise<User>
+  +updateUser(id: string, data: UpdateUserDTO): Promise<User>
+  +deleteUser(id: string): Promise<void>
+  +exportUserData(id: string): Promise<UserDataExport>
+}
+
+interface IProfessionalService {
+  +getProfile(id: string): Promise<ProfessionalProfile>
+  +updateProfile(id: string, data: UpdateProfileDTO): Promise<ProfessionalProfile>
+  +searchProfessionals(query: SearchQuery): Promise<PaginatedResult<ProfessionalProfile>>
+}
+
+interface ICompanyService {
+  +getProfile(id: string): Promise<CompanyProfile>
+  +updateProfile(id: string, data: UpdateProfileDTO): Promise<CompanyProfile>
+  +searchCompanies(query: SearchQuery): Promise<PaginatedResult<CompanyProfile>>
+}
+
+interface IProjectService {
+  +createProject(data: CreateProjectDTO): Promise<Project>
+  +getProject(id: string): Promise<Project>
+  +updateProject(id: string, data: UpdateProjectDTO): Promise<Project>
+  +deleteProject(id: string): Promise<void>
+  +publishProject(id: string): Promise<Project>
+  +searchProjects(query: SearchQuery): Promise<PaginatedResult<Project>>
+}
+
+interface IApplicationService {
+  +submitApplication(data: CreateApplicationDTO): Promise<Application>
+  +getApplication(id: string): Promise<Application>
+  +updateApplicationStatus(id: string, status: ApplicationStatus): Promise<Application>
+  +withdrawApplication(id: string): Promise<void>
+  +getProjectApplications(projectId: string): Promise<Application[]>
+}
+
+interface IMessageService {
+  +sendMessage(data: CreateMessageDTO): Promise<Message>
+  +getConversations(userId: string): Promise<Conversation[]>
+  +getConversationMessages(applicationId: string): Promise<Message[]>
+  +markAsRead(messageId: string): Promise<void>
+}
+
+interface ITransactionService {
+  +createTransaction(data: CreateTransactionDTO): Promise<Transaction>
+  +getTransaction(id: string): Promise<Transaction>
+  +confirmPayment(id: string): Promise<Transaction>
+  +processRefund(id: string, reason: string): Promise<Transaction>
+  +getUserTransactions(userId: string): Promise<Transaction[]>
+}
+
+interface ISearchService {
+  +search(query: string, filters: SearchFilters): Promise<SearchResults>
+  +searchProjects(query: string, filters: ProjectFilters): Promise<PaginatedResult<Project>>
+  +searchProfessionals(query: string, filters: ProfessionalFilters): Promise<PaginatedResult<ProfessionalProfile>>
+}
+
+interface INotificationService {
+  +sendEmail(to: string, template: string, data: any): Promise<void>
+  +sendNotification(userId: string, notification: Notification): Promise<void>
+}
+
+interface IStripeService {
+  +createPaymentIntent(amount: number, metadata: any): Promise<PaymentIntent>
+  +confirmPaymentIntent(id: string): Promise<PaymentIntent>
+  +createRefund(paymentIntentId: string): Promise<Refund>
+  +handleWebhook(event: StripeEvent): Promise<void>
+}
+
+class AuthService implements IAuthService {
+  -userRepository: IUserRepository
+  -jwtService: IJWTService
+  -passwordService: IPasswordService
+  +register(data: RegisterDTO): Promise<AuthResponse>
+  +login(credentials: LoginDTO): Promise<AuthResponse>
+  +logout(token: string): Promise<void>
+  +verifyToken(token: string): Promise<JWTPayload>
+  +refreshToken(refreshToken: string): Promise<AuthResponse>
+}
+
+class UserService implements IUserService {
+  -userRepository: IUserRepository
+  -consentRepository: IConsentRepository
+  +getUserById(id: string): Promise<User>
+  +updateUser(id: string, data: UpdateUserDTO): Promise<User>
+  +deleteUser(id: string): Promise<void>
+  +exportUserData(id: string): Promise<UserDataExport>
+}
+
+class ProfessionalService implements IProfessionalService {
+  -professionalRepository: IProfessionalRepository
+  -searchService: ISearchService
+  +getProfile(id: string): Promise<ProfessionalProfile>
+  +updateProfile(id: string, data: UpdateProfileDTO): Promise<ProfessionalProfile>
+  +searchProfessionals(query: SearchQuery): Promise<PaginatedResult<ProfessionalProfile>>
+}
+
+class ProjectService implements IProjectService {
+  -projectRepository: IProjectRepository
+  -searchService: ISearchService
+  +createProject(data: CreateProjectDTO): Promise<Project>
+  +getProject(id: string): Promise<Project>
+  +updateProject(id: string, data: UpdateProjectDTO): Promise<Project>
+  +deleteProject(id: string): Promise<void>
+  +publishProject(id: string): Promise<Project>
+  +searchProjects(query: SearchQuery): Promise<PaginatedResult<Project>>
+}
+
+class ApplicationService implements IApplicationService {
+  -applicationRepository: IApplicationRepository
+  -notificationService: INotificationService
+  +submitApplication(data: CreateApplicationDTO): Promise<Application>
+  +getApplication(id: string): Promise<Application>
+  +updateApplicationStatus(id: string, status: ApplicationStatus): Promise<Application>
+  +withdrawApplication(id: string): Promise<void>
+  +getProjectApplications(projectId: string): Promise<Application[]>
+}
+
+class MessageService implements IMessageService {
+  -messageRepository: IMessageRepository
+  -socketService: ISocketService
+  +sendMessage(data: CreateMessageDTO): Promise<Message>
+  +getConversations(userId: string): Promise<Conversation[]>
+  +getConversationMessages(applicationId: string): Promise<Message[]>
+  +markAsRead(messageId: string): Promise<void>
+}
+
+class TransactionService implements ITransactionService {
+  -transactionRepository: ITransactionRepository
+  -stripeService: IStripeService
+  -notificationService: INotificationService
+  +createTransaction(data: CreateTransactionDTO): Promise<Transaction>
+  +getTransaction(id: string): Promise<Transaction>
+  +confirmPayment(id: string): Promise<Transaction>
+  +processRefund(id: string, reason: string): Promise<Transaction>
+  +getUserTransactions(userId: string): Promise<Transaction[]>
+}
+
+class SearchService implements ISearchService {
+  -projectRepository: IProjectRepository
+  -professionalRepository: IProfessionalRepository
+  -cacheService: ICacheService
+  +search(query: string, filters: SearchFilters): Promise<SearchResults>
+  +searchProjects(query: string, filters: ProjectFilters): Promise<PaginatedResult<Project>>
+  +searchProfessionals(query: string, filters: ProfessionalFilters): Promise<PaginatedResult<ProfessionalProfile>>
+}
+
+class User {
+  +id: string
+  +email: string
+  +passwordHash: string
+  +userType: UserType
+  +status: UserStatus
+  +emailVerified: boolean
+  +createdAt: Date
+  +updatedAt: Date
+  +lastLoginAt: Date
+}
+
+class ProfessionalProfile {
+  +id: string
+  +userId: string
+  +firstName: string
+  +lastName: string
+  +headline: string
+  +bio: string
+  +skills: string[]
+  +experienceYears: number
+  +hourlyRate: number
+  +availability: AvailabilityStatus
+  +location: string
+  +timezone: string
+  +profileImageUrl: string
+  +resumeUrl: string
+  +portfolioUrl: string
+}
+
+class CompanyProfile {
+  +id: string
+  +userId: string
+  +companyName: string
+  +industry: string
+  +description: string
+  +companySize: CompanySize
+  +websiteUrl: string
+  +logoUrl: string
+  +location: string
+}
+
+class Project {
+  +id: string
+  +companyId: string
+  +title: string
+  +description: string
+  +requiredSkills: string[]
+  +budgetMin: number
+  +budgetMax: number
+  +durationWeeks: number
+  +status: ProjectStatus
+  +deadline: Date
+  +publishedAt: Date
+}
+
+class Application {
+  +id: string
+  +projectId: string
+  +professionalId: string
+  +coverLetter: string
+  +proposedRate: number
+  +estimatedDuration: number
+  +status: ApplicationStatus
+  +createdAt: Date
+}
+
+class Message {
+  +id: string
+  +senderId: string
+  +receiverId: string
+  +applicationId: string
+  +content: string
+  +isRead: boolean
+  +createdAt: Date
+}
+
+class Transaction {
+  +id: string
+  +projectId: string
+  +professionalId: string
+  +companyId: string
+  +amount: number
+  +commissionRate: number
+  +commissionAmount: number
+  +netAmount: number
+  +stripePaymentIntentId: string
+  +status: TransactionStatus
+  +completedAt: Date
+}
+
+enum UserType {
+  PROFESSIONAL
+  COMPANY
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ProjectStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  PENDING
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+AuthService ..> User
+UserService ..> User
+ProfessionalService ..> ProfessionalProfile
+ProjectService ..> Project
+ApplicationService ..> Application
+MessageService ..> Message
+TransactionService ..> Transaction
+
+User "1" -- "0..1" ProfessionalProfile
+User "1" -- "0..1" CompanyProfile
+CompanyProfile "1" -- "0..*" Project
+Project "1" -- "0..*" Application
+ProfessionalProfile "1" -- "0..*" Application
+Application "1" -- "0..*" Message
+Project "1" -- "0..*" Transaction
+ProfessionalProfile "1" -- "0..*" Transaction
+CompanyProfile "1" -- "0..*" Transaction
+
+@enduml

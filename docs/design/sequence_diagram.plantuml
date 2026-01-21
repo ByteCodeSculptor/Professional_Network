@@ -1,0 +1,160 @@
+@startuml
+
+title Professional Registration and Project Application Flow
+
+actor Professional
+participant "React App" as Client
+participant "API Server" as API
+participant "Auth Service" as Auth
+participant "User Service" as User
+participant "Professional Service" as Prof
+participant "Database" as DB
+participant "Email Service" as Email
+
+== User Registration ==
+
+Professional -> Client: Fill registration form
+Client -> API: POST /auth/register
+note right
+  Input: {
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "userType": "professional",
+    "consents": {
+      "terms": true,
+      "privacy": true
+    }
+  }
+end note
+
+API -> Auth: register(data)
+Auth -> Auth: validateInput(data)
+Auth -> Auth: hashPassword(password)
+Auth -> DB: INSERT INTO users
+DB --> Auth: user created
+
+Auth -> DB: INSERT INTO consent_records
+DB --> Auth: consents recorded
+
+Auth -> Auth: generateJWT(user)
+Auth --> API: AuthResponse
+note right
+  Output: {
+    "user": {
+      "id": "uuid",
+      "email": "john@example.com",
+      "userType": "professional"
+    },
+    "token": "jwt_token"
+  }
+end note
+
+API --> Client: 201 Created
+Client -> Email: Send verification email
+Client -> Client: Store JWT token
+Client -> Client: Redirect to profile setup
+
+== Profile Creation ==
+
+Professional -> Client: Fill profile form
+Client -> API: POST /professionals
+note right
+  Input: {
+    "firstName": "John",
+    "lastName": "Doe",
+    "headline": "Full-Stack Developer",
+    "skills": ["JavaScript", "React", "Node.js"],
+    "hourlyRate": 75.00
+  }
+end note
+
+API -> Prof: createProfile(userId, data)
+Prof -> Prof: validateInput(data)
+Prof -> DB: INSERT INTO professional_profiles
+DB --> Prof: profile created
+Prof --> API: ProfessionalProfile
+
+API --> Client: 201 Created
+Client -> Client: Redirect to dashboard
+
+== Browse and Search Projects ==
+
+Professional -> Client: Navigate to Projects
+Client -> API: GET /projects?skills=JavaScript,React&page=1
+note right
+  Query Parameters:
+  - skills: JavaScript,React
+  - page: 1
+  - limit: 20
+end note
+
+API -> API: searchProjects(query)
+API -> DB: SELECT projects with full-text search
+DB --> API: project results
+
+API --> Client: 200 OK
+note right
+  Output: {
+    "projects": [
+      {
+        "id": "uuid",
+        "title": "E-commerce Website",
+        "requiredSkills": ["React", "Node.js"],
+        "budgetMin": 5000,
+        "budgetMax": 8000
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "total": 45
+    }
+  }
+end note
+
+Client -> Client: Display project list
+
+== View Project Details ==
+
+Professional -> Client: Click on project
+Client -> API: GET /projects/:id
+
+API -> DB: SELECT project with company info
+DB --> API: project details
+
+API --> Client: 200 OK
+Client -> Client: Display project details
+
+== Submit Application ==
+
+Professional -> Client: Click "Apply"
+Client -> Client: Show application form
+Professional -> Client: Fill application form
+Client -> API: POST /applications
+note right
+  Input: {
+    "projectId": "uuid",
+    "coverLetter": "I am interested...",
+    "proposedRate": 80.00,
+    "estimatedDuration": 7
+  }
+end note
+
+API -> API: submitApplication(data)
+API -> API: validateInput(data)
+API -> DB: INSERT INTO applications
+DB --> API: application created
+
+API -> Email: Notify company of new application
+API --> Client: 201 Created
+note right
+  Output: {
+    "id": "uuid",
+    "status": "pending",
+    "createdAt": "2025-10-27T10:00:00Z"
+  }
+end note
+
+Client -> Client: Show success message
+Client -> Client: Redirect to "My Applications"
+
+@enduml

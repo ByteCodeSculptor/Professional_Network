@@ -1,0 +1,123 @@
+@startuml
+
+title Payment Flow with Stripe Integration
+
+actor Company
+participant "React App" as Client
+participant "API Server" as API
+participant "Transaction Service" as Trans
+participant "Database" as DB
+participant "Stripe API" as Stripe
+
+== Accept Application and Initiate Payment ==
+
+Company -> Client: Accept application
+Client -> API: PATCH /applications/:id
+note right
+  Input: {
+    "status": "accepted"
+  }
+end note
+
+API -> DB: UPDATE applications SET status = 'accepted'
+DB --> API: application updated
+
+API --> Client: 200 OK
+Client -> Client: Show payment form
+
+Company -> Client: Click "Proceed to Payment"
+Client -> API: POST /transactions
+note right
+  Input: {
+    "projectId": "uuid",
+    "professionalId": "uuid",
+    "amount": 7500.00
+  }
+end note
+
+API -> Trans: createTransaction(data)
+Trans -> Trans: calculateCommission(amount)
+note right
+  commission_rate = 10%
+  commission_amount = 750.00
+  net_amount = 6750.00
+end note
+
+Trans -> Stripe: Create PaymentIntent
+note right
+  Input: {
+    "amount": 750000,
+    "currency": "usd",
+    "metadata": {
+      "projectId": "uuid",
+      "professionalId": "uuid"
+    }
+  }
+end note
+
+Stripe --> Trans: PaymentIntent + client_secret
+Trans -> DB: INSERT INTO transactions
+DB --> Trans: transaction created
+
+Trans --> API: Transaction + client_secret
+API --> Client: 201 Created
+note right
+  Output: {
+    "id": "uuid",
+    "amount": 7500.00,
+    "status": "pending",
+    "stripeClientSecret": "pi_xxx_secret_xxx"
+  }
+end note
+
+== Client-Side Payment Confirmation ==
+
+Client -> Client: Load Stripe.js
+Client -> Stripe: confirmCardPayment(clientSecret, cardDetails)
+note right
+  Card data NEVER touches our server
+  Stripe.js handles all card data
+end note
+
+Stripe -> Stripe: Process payment
+Stripe --> Client: PaymentIntent status
+
+alt Payment Successful
+  Client -> API: POST /transactions/:id/confirm
+  API -> Stripe: Retrieve PaymentIntent
+  Stripe --> API: PaymentIntent confirmed
+  
+  API -> DB: UPDATE transactions SET status = 'completed'
+  API -> DB: UPDATE projects SET status = 'in_progress'
+  DB --> API: updated
+  
+  API --> Client: 200 OK
+  Client -> Client: Show success message
+  
+else Payment Failed
+  Client -> Client: Show error message
+  Client -> Client: Allow retry
+end
+
+== Webhook Handler (Async) ==
+
+Stripe -> API: POST /webhooks/stripe
+note right
+  Event: payment_intent.succeeded
+  Signature: stripe-signature header
+end note
+
+API -> API: Verify webhook signature
+API -> Trans: handlePaymentSuccess(paymentIntent)
+
+Trans -> DB: UPDATE transactions (if not already)
+Trans -> DB: SELECT professional and company
+DB --> Trans: user details
+
+Trans -> Email: Notify professional (payment received)
+Trans -> Email: Notify company (payment confirmed)
+
+Trans --> API: Success
+API --> Stripe: 200 OK
+
+@enduml

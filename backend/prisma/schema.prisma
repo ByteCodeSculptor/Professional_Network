@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  professional
+  company
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum AvailabilityStatus {
+  available
+  busy
+  not_available
+}
+
+enum CompanySize {
+  ONE_TO_TEN      @map("1-10")
+  ELEVEN_TO_FIFTY @map("11-50")
+  FIFTY_ONE_TO_TWO_HUNDRED @map("51-200")
+  TWO_HUNDRED_ONE_TO_FIVE_HUNDRED @map("201-500")
+  FIVE_HUNDRED_PLUS @map("500+")
+}
+
+enum ProjectStatus {
+  draft
+  open
+  in_progress
+  completed
+  cancelled
+}
+
+enum ApplicationStatus {
+  pending
+  shortlisted
+  accepted
+  rejected
+  withdrawn
+}
+
+enum TransactionStatus {
+  pending
+  processing
+  completed
+  failed
+  refunded
+}
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String     @map("password_hash")
+  userType        UserType   @map("user_type")
+  status          UserStatus @default(active)
+  emailVerified   Boolean    @default(false) @map("email_verified")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  lastLoginAt     DateTime?  @map("last_login_at")
+  
+  professionalProfile ProfessionalProfile?
+  companyProfile      CompanyProfile?
+  sentMessages        Message[] @relation("SentMessages")
+  receivedMessages    Message[] @relation("ReceivedMessages")
+  consentRecords      ConsentRecord[]
+
+  @@index([email])
+  @@index([userType, status])
+  @@map("users")
+}
+
+model ProfessionalProfile {
+  id              String              @id @default(uuid())
+  userId          String              @unique @map("user_id")
+  firstName       String              @map("first_name")
+  lastName        String              @map("last_name")
+  headline        String?
+  bio             String?
+  skills          Json                @default("[]")
+  experienceYears Int?                @map("experience_years")
+  hourlyRate      Decimal?            @map("hourly_rate") @db.Decimal(10, 2)
+  availability    AvailabilityStatus  @default(available)
+  location        String?
+  timezone        String?
+  profileImageUrl String?             @map("profile_image_url")
+  resumeUrl       String?             @map("resume_url")
+  portfolioUrl    String?             @map("portfolio_url")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications  Application[]
+  transactions  Transaction[]
+
+  @@index([userId])
+  @@index([availability])
+  @@map("professional_profiles")
+}
+
+model CompanyProfile {
+  id          String       @id @default(uuid())
+  userId      String       @unique @map("user_id")
+  companyName String       @map("company_name")
+  industry    String?
+  description String?
+  companySize CompanySize? @map("company_size")
+  websiteUrl  String?      @map("website_url")
+  logoUrl     String?      @map("logo_url")
+  location    String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects     Project[]
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([companyName])
+  @@map("company_profiles")
+}
+
+model Project {
+  id             String        @id @default(uuid())
+  companyId      String        @map("company_id")
+  title          String
+  description    String
+  requiredSkills Json          @default("[]") @map("required_skills")
+  budgetMin      Decimal?      @map("budget_min") @db.Decimal(10, 2)
+  budgetMax      Decimal?      @map("budget_max") @db.Decimal(10, 2)
+  durationWeeks  Int?          @map("duration_weeks")
+  status         ProjectStatus @default(draft)
+  deadline       DateTime?     @db.Date
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  publishedAt    DateTime?     @map("published_at")
+  
+  company      CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applications Application[]
+  transactions Transaction[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("projects")
+}
+
+model Application {
+  id                String            @id @default(uuid())
+  projectId         String            @map("project_id")
+  professionalId    String            @map("professional_id")
+  coverLetter       String?           @map("cover_letter")
+  proposedRate      Decimal?          @map("proposed_rate") @db.Decimal(10, 2)
+  estimatedDuration Int?              @map("estimated_duration")
+  status            ApplicationStatus @default(pending)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@unique([projectId, professionalId])
+  @@index([projectId])
+  @@index([professionalId])
+  @@index([status])
+  @@map("applications")
+}
+
+model Message {
+  id            String   @id @default(uuid())
+  senderId      String   @map("sender_id")
+  receiverId    String   @map("receiver_id")
+  applicationId String?  @map("application_id")
+  content       String
+  isRead        Boolean  @default(false) @map("is_read")
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  sender      User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User         @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([applicationId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model Transaction {
+  id                    String            @id @default(uuid())
+  projectId             String            @map("project_id")
+  professionalId        String            @map("professional_id")
+  companyId             String            @map("company_id")
+  amount                Decimal           @db.Decimal(10, 2)
+  commissionRate        Decimal           @map("commission_rate") @db.Decimal(5, 2)
+  commissionAmount      Decimal           @map("commission_amount") @db.Decimal(10, 2)
+  netAmount             Decimal           @map("net_amount") @db.Decimal(10, 2)
+  stripePaymentIntentId String?           @map("stripe_payment_intent_id")
+  status                TransactionStatus @default(pending)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  completedAt           DateTime?         @map("completed_at")
+  
+  project      Project             @relation(fields: [projectId], references: [id])
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  company      CompanyProfile      @relation(fields: [companyId], references: [id])
+
+  @@index([projectId])
+  @@index([professionalId])
+  @@index([companyId])
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@map("transactions")
+}
+
+model ConsentRecord {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  consentType  String   @map("consent_type")
+  consentGiven Boolean  @map("consent_given")
+  consentText  String   @map("consent_text")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([consentType])
+  @@map("consent_records")
+}
