@@ -1,124 +1,287 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { projectsAPI } from '@/services/api';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Loader2, ArrowLeft, Briefcase, DollarSign, Calendar, MapPin, Clock, Edit } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Calendar, DollarSign, MapPin, Briefcase } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { projectsAPI } from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  budgetMin: number;
+  budgetMax: number;
+  durationWeeks: number;
+  status: string;
+  requiredSkills: string[];
+  deadline: string;
+  createdAt: string;
+  companyId?: string;
+  company?: {
+    companyName: string;
+    location: string;
+  };
+}
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [project, setProject] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [project, setProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isApplying, setIsApplying] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (id) fetchProject();
+    if (id) {
+      loadProject();
+    }
   }, [id]);
 
-  const fetchProject = async () => {
+  const loadProject = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       const response = await projectsAPI.getById(id!);
-      setProject(response.data.project);
+      setProject(response.data);
     } catch (error) {
-      console.error('Failed to fetch project:', error);
+      console.error('Failed to load project:', error);
+      setError('Failed to load project details');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (loading) {
+  const handleApply = async () => {
+    if (user?.userType !== 'professional') {
+      setError('Only professionals can apply to projects');
+      return;
+    }
+
+    setIsApplying(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // TODO: Implement application API call
+      // await applicationsAPI.create({ projectId: id, ... });
+      setSuccess('Application submitted successfully!');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to submit application');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleEdit = () => {
+    navigate(`/projects/${id}/edit`);
+  };
+
+  const isProjectOwner = user?.userType === 'company' && project?.companyId === user?.profile?.id;
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
     );
   }
 
-  if (!project) return <div>Project not found</div>;
+  if (!project) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Project Not Found</CardTitle>
+              <CardDescription>The project you're looking for doesn't exist.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link to="/projects">Back to Projects</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <Link to="/projects" className="flex items-center text-blue-600 mb-6 hover:underline">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
-        </Link>
+    <DashboardLayout>
+      <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back
+      </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Project Details */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1">
+                  <CardTitle className="text-3xl mb-2">{project.title}</CardTitle>
+                  {project.company && (
+                    <CardDescription className="text-base">
+                      {project.company.companyName}
+                    </CardDescription>
+                  )}
+                </div>
+                <Badge variant={project.status === 'open' ? 'default' : 'secondary'}>
+                  {project.status}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <h3 className="font-semibold mb-2">Project Description</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap">{project.description}</p>
+              </div>
+
+              {project.requiredSkills && project.requiredSkills.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">Required Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {project.requiredSkills.map((skill, index) => (
+                      <Badge key={index} variant="outline">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Alerts */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        {/* Sidebar Info */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Project Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center">
+                <DollarSign className="h-5 w-5 mr-3 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget</p>
+                  <p className="font-semibold">
+                    ${project.budgetMin?.toLocaleString() || 0} - ${project.budgetMax?.toLocaleString() || 0}
+                  </p>
+                </div>
+              </div>
+
+              {project.durationWeeks && (
+                <div className="flex items-center">
+                  <Calendar className="h-5 w-5 mr-3 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Duration</p>
+                    <p className="font-semibold">{project.durationWeeks} weeks</p>
+                  </div>
+                </div>
+              )}
+
+              {project.deadline && (
+                <div className="flex items-center">
+                  <Clock className="h-5 w-5 mr-3 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Deadline</p>
+                    <p className="font-semibold">
+                      {new Date(project.deadline).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {project.company?.location && (
+                <div className="flex items-center">
+                  <MapPin className="h-5 w-5 mr-3 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Location</p>
+                    <p className="font-semibold">{project.company.location}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          {user?.userType === 'professional' && project.status === 'open' && (
             <Card>
               <CardHeader>
-                <div className="flex gap-2 mb-2">
-                  <Badge>{project.category}</Badge>
-                  <Badge variant="outline">Full-time</Badge>
-                </div>
-                <CardTitle className="text-3xl font-bold">{project.title}</CardTitle>
+                <CardTitle>Apply to this Project</CardTitle>
+                <CardDescription>
+                  Submit your application to work on this project
+                </CardDescription>
               </CardHeader>
-              <CardContent className="prose max-w-none">
-                <h3 className="text-lg font-semibold mb-2">Description</h3>
-                <p className="text-gray-600 whitespace-pre-wrap">{project.description}</p>
-                
-                <h3 className="text-lg font-semibold mt-6 mb-2">Requirements</h3>
-                <ul className="list-disc pl-5 text-gray-600">
-                  <li>Minimum 3 years of experience in React</li>
-                  <li>Strong understanding of TypeScript</li>
-                  <li>Experience with RESTful APIs</li>
-                </ul>
-              </CardContent>
+              <CardFooter>
+                <Button 
+                  className="w-full" 
+                  onClick={handleApply}
+                  disabled={isApplying}
+                >
+                  {isApplying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Apply Now'
+                  )}
+                </Button>
+              </CardFooter>
             </Card>
-          </div>
+          )}
 
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center text-gray-700">
-                  <DollarSign className="mr-3 h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Budget</div>
-                    <div className="font-semibold">${project.budget}</div>
-                  </div>
-                </div>
-                <div className="flex items-center text-gray-700">
-                  <MapPin className="mr-3 h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Location</div>
-                    <div className="font-semibold">{project.location || 'Remote'}</div>
-                  </div>
-                </div>
-                <div className="flex items-center text-gray-700">
-                  <Calendar className="mr-3 h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Posted</div>
-                    <div className="font-semibold">January 15, 2025</div>
-                  </div>
-                </div>
-                <Button className="w-full h-12 text-lg">Apply Now</Button>
-                <Button variant="outline" className="w-full">Save Project</Button>
-              </CardContent>
-            </Card>
-
+          {isProjectOwner && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">About the Client</CardTitle>
+                <CardTitle>Manage Project</CardTitle>
+                <CardDescription>
+                  Edit or update your project details
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                    TC
-                  </div>
-                  <div>
-                    <div className="font-medium">TechCorp Inc.</div>
-                    <div className="text-xs text-gray-500">Verified Client</div>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">
-                  A leading software solutions provider based in San Francisco.
-                </p>
-              </CardContent>
+              <CardFooter className="flex flex-col gap-2">
+                <Button 
+                  className="w-full" 
+                  onClick={handleEdit}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Project
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  asChild
+                >
+                  <Link to={`/projects/${id}/applications`}>
+                    View Applications
+                  </Link>
+                </Button>
+              </CardFooter>
             </Card>
-          </div>
+          )}
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

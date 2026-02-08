@@ -6,6 +6,10 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import MyApplicationsPage from './pages/MyApplicationsPage';
+import ProfilePage from './pages/ProfilePage';
+import PostProjectPage from './pages/PostProjectPage';
+import SearchTalentPage from './pages/SearchTalentPage';
 import './styles/globals.css';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -37,10 +41,42 @@ function App() {
           }
         />
         <Route
+          path="/projects/new"
+          element={
+            <PrivateRoute>
+              <PostProjectPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/projects/:id"
           element={
             <PrivateRoute>
               <ProjectDetailPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/applications"
+          element={
+            <PrivateRoute>
+              <MyApplicationsPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <ProfilePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/talent"
+          element={
+            <PrivateRoute>
+              <SearchTalentPage />
             </PrivateRoute>
           }
         />

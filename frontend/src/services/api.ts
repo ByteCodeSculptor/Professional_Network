@@ -54,3 +54,21 @@ export const projectsAPI = {
   publish: (id: string) => api.post(`/projects/${id}/publish`),
   delete: (id: string) => api.delete(`/projects/${id}`),
 };
+
+// Applications API
+export const applicationsAPI = {
+  create: (data: any) => api.post('/applications', data),
+  getMyApplications: () => api.get('/applications/my-applications'),
+  getById: (id: string) => api.get(`/applications/${id}`),
+  updateStatus: (id: string, status: string) => api.patch(`/applications/${id}/status`, { status }),
+  withdraw: (id: string) => api.patch(`/applications/${id}/withdraw`),
+  getProjectApplications: (projectId: string) => api.get(`/applications/project/${projectId}`),
+};
+
+// Profiles API
+export const profilesAPI = {
+  getMyProfile: () => api.get('/profiles/me'),
+  updateMyProfile: (data: any) => api.put('/profiles/me', data),
+  getProfileById: (id: string, type: 'professional' | 'company') => api.get(`/profiles/${id}`, { params: { type } }),
+  searchProfessionals: (params?: any) => api.get('/profiles/search/professionals', { params }),
+};

@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 
 const createProjectSchema = z.object({
   title: z.string().min(10).max(200),
-  description: z.string().min(10).max(5000),
+  description: z.string().min(50).max(5000),
   requiredSkills: z.array(z.string()).min(1).max(20),
   budgetMin: z.number().positive().optional(),
   budgetMax: z.number().positive().optional(),
