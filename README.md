@@ -181,9 +181,9 @@ MIT License - see LICENSE file for details
 
 ## 👥 Team
 
-- Product Manager: Emma
-- Architect: Bob
-- Engineer: Alex
+- Product Manager: Vishnu Vardhan
+- Architect: Vishnu Vardhan
+- Engineer: Vishnu Vardhan
 
 ## 🤝 Contributing
 
@@ -195,7 +195,7 @@ MIT License - see LICENSE file for details
 
 ## 📞 Support
 
-For support, email support@talentconnect.com or join our Slack channel.
+For support, email ramki3244@gmail.com or join our Slack channel.
 
 ## 🗺️ Roadmap
 
